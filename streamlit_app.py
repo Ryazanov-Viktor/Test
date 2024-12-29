@@ -83,6 +83,7 @@ if st.button("Построить ROC-кривую"):
 st.header("Кросс-валидация")
 if st.button("Запустить кросс-валидацию"):
     kfold = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+    progress = st.progress(0)
 
     results = []
     mean_roc_auc = 0
@@ -107,6 +108,9 @@ if st.button("Запустить кросс-валидацию"):
         cm_df = pd.DataFrame(cm, index=["Actual 0", "Actual 1"], columns=["Predicted 0", "Predicted 1"])
         st.table(cm_df)
 
+        # Обновление прогресса
+        progress.progress(fold / 5)
+
     mean_roc_auc /= kfold.get_n_splits()
     st.subheader(f"Средний ROC-AUC: {mean_roc_auc:.4f}")
 
@@ -115,14 +119,18 @@ st.header("ROC-AUC для кросс-валидации")
 if st.button("Построить график ROC-AUC"):
     kfold = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
     roc_auc_scores = []
+    progress = st.progress(0)
 
-    for train_idx, test_idx in kfold.split(X, y):
+    for fold, (train_idx, test_idx) in enumerate(kfold.split(X, y), start=1):
         X_train_fold, X_test_fold = X.iloc[train_idx], X.iloc[test_idx]
         y_train_fold, y_test_fold = y.iloc[train_idx], y.iloc[test_idx]
 
         model.fit(X_train_fold, y_train_fold)
         y_pred_prob_fold = model.predict_proba(X_test_fold)[:, 1]
         roc_auc_scores.append(roc_auc_score(y_test_fold, y_pred_prob_fold))
+
+        # Обновление прогресса
+        progress.progress(fold / 5)
 
     # Построение графика
     plt.figure(figsize=(10, 6))
