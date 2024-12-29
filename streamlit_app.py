@@ -185,34 +185,7 @@ if st.button("Построить SHAP-анализ"):
         st.write(f"Время выполнения: {elapsed_time:.2f} секунд")
 
 # Предсказания
-st.header("Предсказания построчно")
-uploaded_file = st.file_uploader("Загрузите файл CSV для предсказаний", type="csv")
-if uploaded_file is not None:
-    with st.spinner("Обработка загруженного файла..."):
-        start_time = time.time()
-        EXPECTED_COLUMNS = ["T", "E", "C", "FM", "Xfm", "AFM", "Xafm"]
-        try:
-            data = pd.read_csv(uploaded_file)
-            if not all(col in data.columns for col in EXPECTED_COLUMNS):
-                st.error(f"Отсутствуют необходимые колонки: {', '.join(EXPECTED_COLUMNS)}")
-            else:
-                predictions = model.predict(data[EXPECTED_COLUMNS])
-                prediction_probs = model.predict_proba(data[EXPECTED_COLUMNS])[:, 1]
-
-                results = pd.DataFrame({
-                    "Sample": data.index,
-                    "Prediction": predictions,
-                    "Probability": prediction_probs,
-                })
-                st.write(results)
-        except Exception as e:
-            st.error(f"Ошибка обработки файла: {str(e)}")
-        elapsed_time = time.time() - start_time
-        st.write(f"Время выполнения: {elapsed_time:.2f} секунд")
-
-
-# Предсказания
-st.header("Предсказания посемплово")
+st.header("Предсказания")
 uploaded_file = st.file_uploader("Загрузите файл CSV", type="csv")
 if uploaded_file:
     try:
