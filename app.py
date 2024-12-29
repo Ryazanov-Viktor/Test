@@ -19,7 +19,7 @@ import io
 
 # Пути к файлам
 MODEL_PATH = "xgboost_model.pkl"
-DATA_PATH = "Main_data.csv"
+DATA_PATH = "Main_Data.csv"
 
 
 # Загрузка данных
