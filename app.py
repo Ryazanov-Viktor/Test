@@ -14,8 +14,7 @@ from sklearn.metrics import (
     roc_curve,
     confusion_matrix,
 )
-from xgboost import XGBClassifier
-import io
+
 
 # Пути к файлам
 MODEL_PATH = "xgboost_model.pkl"
@@ -44,7 +43,7 @@ model = load_model(MODEL_PATH)
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
 
 # Главный интерфейс
-st.title("Модель прогнозирования (XGBoost)")
+st.title("AI_phase_diagram_API")
 
 # Метрики модели
 st.header("Метрики модели")
@@ -82,34 +81,37 @@ if st.button("Построить ROC-кривую"):
 
 # Кросс-валидация
 st.header("Кросс-валидация")
-if st.button("Выполнить кросс-валидацию"):
+if st.button("Запустить кросс-валидацию"):
     kfold = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
-    roc_auc_scores = cross_val_score(model, X, y, cv=kfold, scoring='roc_auc')
 
-    st.subheader("Результаты кросс-валидации")
-    for i, score in enumerate(roc_auc_scores, start=1):
-        st.write(f"Fold {i}: ROC-AUC = {score:.4f}")
+    results = []
+    mean_roc_auc = 0
+    st.subheader("Результаты по каждому фолду")
 
-    st.write(f"\nСредний ROC-AUC: {np.mean(roc_auc_scores):.4f}")
-
-    st.subheader("Матрицы ошибок")
-    cm_list = []
-    for train_idx, test_idx in kfold.split(X, y):
+    for fold, (train_idx, test_idx) in enumerate(kfold.split(X, y), start=1):
         X_train_fold, X_test_fold = X.iloc[train_idx], X.iloc[test_idx]
         y_train_fold, y_test_fold = y.iloc[train_idx], y.iloc[test_idx]
 
         model.fit(X_train_fold, y_train_fold)
         y_pred_fold = model.predict(X_test_fold)
-        cm = confusion_matrix(y_test_fold, y_pred_fold)
-        cm_list.append(cm)
+        y_pred_prob_fold = model.predict_proba(X_test_fold)[:, 1]
 
-    for i, cm in enumerate(cm_list, start=1):
-        st.write(f"Fold {i}:")
+        # Вычисление метрик
+        cm = confusion_matrix(y_test_fold, y_pred_fold)
+        roc_auc = roc_auc_score(y_test_fold, y_pred_prob_fold)
+        mean_roc_auc += roc_auc
+
+        # Отображение результатов для текущего фолда
+        st.write(f"Fold {fold}:")
+        st.write(f"ROC-AUC: {roc_auc:.4f}")
         cm_df = pd.DataFrame(cm, index=["Actual 0", "Actual 1"], columns=["Predicted 0", "Predicted 1"])
         st.table(cm_df)
 
+    mean_roc_auc /= kfold.get_n_splits()
+    st.subheader(f"Средний ROC-AUC: {mean_roc_auc:.4f}")
+
 # Построение графика ROC-AUC
-st.header("График ROC-AUC для кросс-валидации")
+st.header("ROC-AUC для кросс-валидации")
 if st.button("Построить график ROC-AUC"):
     kfold = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
     roc_auc_scores = []
@@ -122,20 +124,16 @@ if st.button("Построить график ROC-AUC"):
         y_pred_prob_fold = model.predict_proba(X_test_fold)[:, 1]
         roc_auc_scores.append(roc_auc_score(y_test_fold, y_pred_prob_fold))
 
+    # Построение графика
     plt.figure(figsize=(10, 6))
     folds = np.arange(1, len(roc_auc_scores) + 1)
-    plt.plot(folds, roc_auc_scores, marker='o', markersize=10, linestyle='-', color='royalblue', linewidth=2, label='ROC-AUC Score')
-    for i, score in enumerate(roc_auc_scores):
-        plt.text(folds[i], score + 0.01, f'{score:.4f}', ha='center', fontsize=12, color='black')
-    plt.ylim(0.8, 1.1)
+    plt.plot(folds, roc_auc_scores, marker='o', linestyle='-', color='royalblue', linewidth=2, label='ROC-AUC Score')
+    plt.title("5-fold Cross-Validation ROC-AUC", fontsize=16)
+    plt.xlabel("Fold Number", fontsize=14)
+    plt.ylabel("ROC-AUC Score", fontsize=14)
     plt.xticks(folds)
-    plt.xlabel('Fold Number', fontsize=14)
-    plt.ylabel('ROC-AUC Score', fontsize=14)
-    plt.title('5-fold Cross-Validation ROC-AUC', fontsize=16, fontweight='bold')
     plt.grid(True)
-    plt.legend(loc='lower right', fontsize=12)
-    plt.tight_layout()
-
+    plt.legend(fontsize=12)
     st.pyplot(plt)
 
 # Важность признаков
